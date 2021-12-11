@@ -1,18 +1,18 @@
 package cluster
 
 import (
-	"github.com/integration-system/isp-kit/json"
+	"encoding/json"
 )
 
 type AddressConfiguration struct {
-	IP   string
-	Port string
+	IP   string `json:"ip"`
+	Port string `json:"port"`
 }
 
 type ConfigData struct {
-	Version       string
-	Schema        json.RawMessage
-	DefaultConfig json.RawMessage
+	Version string
+	Schema  json.RawMessage
+	Config  json.RawMessage
 }
 
 type ModuleInfo struct {

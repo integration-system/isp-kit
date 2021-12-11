@@ -64,22 +64,15 @@ func (h Handshake) Do(ctx context.Context, host string) (w *clientWrapper, err e
 		event := ModuleConnectedEvent(module)
 		requiredModulesChans[module] = cli.EventChan(event)
 	}
-	errorChan := cli.EventChan(ErrorConnection)
-	configErrorChan := cli.EventChan(ConfigError)
-	cli.OnDefault(func(event string, data []byte) {
-		h.logger.Error(ctx, "unexpected event from config service", log.String("event", event), log.Any("data", json.RawMessage(data)))
-	})
 
 	connUrl, err := url.Parse(fmt.Sprintf("ws://%s/isp-etp/", host))
 	if err != nil {
 		return nil, errors.WithMessage(err, "parse conn url")
 	}
 	params := url.Values{}
-	params.Add("moduleName", h.moduleInfo.ModuleName)
+	params.Add("module_name", h.moduleInfo.ModuleName)
 	connUrl.RawQuery = params.Encode()
 
-	ctx, cancel := context.WithTimeout(ctx, 1*time.Second)
-	defer cancel()
 	err = cli.Dial(ctx, connUrl.String())
 	if err != nil {
 		return nil, errors.WithMessagef(err, "connect to config service %s", host)
@@ -94,14 +87,10 @@ func (h Handshake) Do(ctx context.Context, host string) (w *clientWrapper, err e
 	if err != nil {
 		return nil, errors.WithMessagef(err, "marshal remote config data")
 	}
+
 	_, err = cli.EmitWithAck(ctx, ModuleSendConfigSchema, configData)
 	if err != nil {
 		return nil, errors.WithMessagef(err, "send remote config data")
-	}
-
-	err = readError(errorChan)
-	if err != nil {
-		return nil, errors.WithMessagef(err, "error from config service (%s)", ErrorConnection)
 	}
 
 	requirementsData, err := json.Marshal(h.requirements)
@@ -113,19 +102,14 @@ func (h Handshake) Do(ctx context.Context, host string) (w *clientWrapper, err e
 		return nil, errors.WithMessagef(err, "send module requirements")
 	}
 
-	err = readError(configErrorChan)
-	if err != nil {
-		return nil, errors.WithMessagef(err, "error from config service (%s)", ConfigError)
-	}
-
-	remoteConfig, err := await(ctx, remoteConfigChan, 1*time.Second)
+	remoteConfig, err := cli.Await(ctx, remoteConfigChan, 1*time.Second)
 	if err != nil {
 		return nil, errors.WithMessage(err, "await remote config")
 	}
 
 	var routes RoutingConfig
 	if h.requirements.RequireRoutes {
-		data, err := await(ctx, routesChan, 1*time.Second)
+		data, err := cli.Await(ctx, routesChan, 1*time.Second)
 		if err != nil {
 			return nil, errors.WithMessage(err, "await routes")
 		}
@@ -137,7 +121,7 @@ func (h Handshake) Do(ctx context.Context, host string) (w *clientWrapper, err e
 
 	requiredModulesHosts := make(map[string][]string)
 	for event, ch := range requiredModulesChans {
-		data, err := await(ctx, ch, 1*time.Second)
+		data, err := cli.Await(ctx, ch, 1*time.Second)
 		if err != nil {
 			return nil, errors.WithMessagef(err, "await event %s", event)
 		}
@@ -170,27 +154,6 @@ func (h Handshake) Do(ctx context.Context, host string) (w *clientWrapper, err e
 	}
 
 	return cli, nil
-}
-
-func readError(ch chan []byte) error {
-	select {
-	case data := <-ch:
-		return errors.New(string(data))
-	default:
-		return nil
-	}
-}
-
-func await(ctx context.Context, ch chan []byte, timeout time.Duration) ([]byte, error) {
-	ctx, cancel := context.WithTimeout(ctx, timeout)
-	defer cancel()
-
-	select {
-	case <-ctx.Done():
-		return nil, ctx.Err()
-	case data := <-ch:
-		return data, nil
-	}
 }
 
 func readRoutes(data []byte) (RoutingConfig, error) {

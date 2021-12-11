@@ -1,8 +1,6 @@
 package config
 
 import (
-	"path"
-
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
 )
@@ -34,10 +32,7 @@ func New(opts ...Option) (*Config, error) {
 	}
 
 	if cfg.file != "" {
-		dir := path.Dir(cfg.file)
-		file := path.Base(cfg.file)
-		viper.AddConfigPath(dir)
-		viper.SetConfigFile(file)
+		viper.SetConfigFile(cfg.file)
 		err := viper.ReadInConfig()
 		if err != nil {
 			return nil, errors.WithMessage(err, "read config from file")

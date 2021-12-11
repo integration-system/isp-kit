@@ -106,7 +106,7 @@ func (a *Application) Run() error {
 		a.group.Go(func() error {
 			err := runner.Run(a.ctx)
 			if err != nil {
-				return errors.WithMessagef(err, "start runner[%s]", runner)
+				return errors.WithMessagef(err, "start runner[%T]", runner)
 			}
 			return nil
 		})
@@ -121,7 +121,7 @@ func (a *Application) Shutdown() {
 		closer := a.closers[i]
 		err := closer.Close()
 		if err != nil {
-			a.logger.Error(a.ctx, err, log.String("closer", fmt.Sprintln(closer)))
+			a.logger.Error(a.ctx, err, log.String("closer", fmt.Sprintf("%T", closer)))
 		}
 	}
 }

@@ -13,13 +13,13 @@ type Validator interface {
 }
 
 type Config struct {
-	prevConfig     json.RawMessage
-	overrideConfig json.RawMessage
+	prevConfig     []byte
+	overrideConfig []byte
 	validator      Validator
 	lock           sync.Locker
 }
 
-func New(validator Validator, overrideData json.RawMessage) *Config {
+func New(validator Validator, overrideData []byte) *Config {
 	return &Config{
 		prevConfig:     nil,
 		overrideConfig: overrideData,
@@ -28,7 +28,7 @@ func New(validator Validator, overrideData json.RawMessage) *Config {
 	}
 }
 
-func (c *Config) Upgrade(data json.RawMessage, newConfigPtr interface{}, prevConfigPtr interface{}) error {
+func (c *Config) Upgrade(data []byte, newConfigPtr interface{}, prevConfigPtr interface{}) error {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
@@ -59,7 +59,7 @@ func (c *Config) Upgrade(data json.RawMessage, newConfigPtr interface{}, prevCon
 	return nil
 }
 
-func (c *Config) mergeWithOverride(data json.RawMessage) ([]byte, error) {
+func (c *Config) mergeWithOverride(data []byte) ([]byte, error) {
 	config := make(map[string]interface{})
 	err := json.Unmarshal(data, &config)
 	if err != nil {
@@ -67,9 +67,11 @@ func (c *Config) mergeWithOverride(data json.RawMessage) ([]byte, error) {
 	}
 
 	overrideData := make(map[string]interface{})
-	err = json.Unmarshal(c.overrideConfig, &overrideData)
-	if err != nil {
-		return nil, errors.WithMessage(err, "unmarshal override data")
+	if len(c.overrideConfig) > 0 {
+		err = json.Unmarshal(c.overrideConfig, &overrideData)
+		if err != nil {
+			return nil, errors.WithMessage(err, "unmarshal override data")
+		}
 	}
 
 	config = bellows.Flatten(config)
@@ -78,6 +80,9 @@ func (c *Config) mergeWithOverride(data json.RawMessage) ([]byte, error) {
 		config[k] = v
 	}
 	result := bellows.Expand(config)
+	if result == nil {
+		result = make(map[string]interface{})
+	}
 	config, ok := result.(map[string]interface{})
 	if !ok {
 		return nil, errors.WithMessagef(err, "unexpected type from bellows, expected map, got %T", result)
