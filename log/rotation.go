@@ -18,7 +18,7 @@ func init() {
 	err := zap.RegisterSink(lumberjackSchema, func(u *url.URL) (zap.Sink, error) {
 		r, err := rotationFromUrl(u)
 		if err != nil {
-			return nil, errors.Wrap(err, "unmarshal rotation config")
+			return nil, errors.WithMessage(err, "unmarshal rotation config")
 		}
 		return newSink(NewFileRotationWriter(*r)), nil
 	})
@@ -53,24 +53,24 @@ func rotationToUrl(r Rotation) url.URL {
 func rotationFromUrl(u *url.URL) (*Rotation, error) {
 	values, err := url.ParseQuery(u.RawQuery)
 	if err != nil {
-		return nil, errors.Wrap(err, "parse lumberjack params")
+		return nil, errors.WithMessage(err, "parse lumberjack params")
 	}
 	file := values.Get("file")
 	maxSizeMb, err := strconv.Atoi(values.Get("maxSizeMb"))
 	if err != nil {
-		return nil, errors.Wrap(err, "parse maxSizeMb")
+		return nil, errors.WithMessage(err, "parse maxSizeMb")
 	}
 	maxDays, err := strconv.Atoi(values.Get("maxDays"))
 	if err != nil {
-		return nil, errors.Wrap(err, "parse maxDays")
+		return nil, errors.WithMessage(err, "parse maxDays")
 	}
 	maxBackups, err := strconv.Atoi(values.Get("maxBackups"))
 	if err != nil {
-		return nil, errors.Wrap(err, "parse maxBackups")
+		return nil, errors.WithMessage(err, "parse maxBackups")
 	}
 	compress, err := strconv.ParseBool(values.Get("compress"))
 	if err != nil {
-		return nil, errors.Wrap(err, "parse compress")
+		return nil, errors.WithMessage(err, "parse compress")
 	}
 	return &Rotation{
 		File:       file,

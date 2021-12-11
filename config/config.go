@@ -45,6 +45,8 @@ func New(opts ...Option) (*Config, error) {
 	}
 
 	cfg.cfg = viper
+	cfg.optional = Optional{v: viper}
+	cfg.mandatory = Mandatory{v: viper}
 
 	return cfg, nil
 }

@@ -65,9 +65,9 @@ func intFromMd(key string, md metadata.MD) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	intValue, err := strconv.ParseInt(value, 10, 32)
+	intValue, err := strconv.Atoi(value)
 	if err != nil {
 		return 0, errors.WithMessagef(err, "parse '%s' to int", key)
 	}
-	return int(intValue), nil
+	return intValue, nil
 }

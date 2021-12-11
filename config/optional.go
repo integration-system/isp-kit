@@ -8,21 +8,21 @@ type Optional struct {
 	v *viper.Viper
 }
 
-func (o Optional) GetInt(key string, defValue int) int {
+func (o Optional) Int(key string, defValue int) int {
 	if o.v.IsSet(key) {
 		return o.v.GetInt(key)
 	}
 	return defValue
 }
 
-func (o Optional) GetString(key string, defValue string) string {
+func (o Optional) String(key string, defValue string) string {
 	if o.v.IsSet(key) {
 		return o.v.GetString(key)
 	}
 	return defValue
 }
 
-func (o Optional) GetBool(key string, defValue bool) bool {
+func (o Optional) Bool(key string, defValue bool) bool {
 	if o.v.IsSet(key) {
 		return o.v.GetBool(key)
 	}

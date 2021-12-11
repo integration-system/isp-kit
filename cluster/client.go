@@ -16,19 +16,24 @@ type Client struct {
 	lb           *lb.RoundRobin
 	eventHandler *EventHandler
 	logger       log.Logger
+
+	close context.CancelFunc
 }
 
-func NewClient(moduleInfo ModuleInfo, configData ConfigData, hosts []string, eventHandler *EventHandler, logger log.Logger) *Client {
+func NewClient(moduleInfo ModuleInfo, configData ConfigData, hosts []string, logger log.Logger) *Client {
 	return &Client{
-		moduleInfo:   moduleInfo,
-		configData:   configData,
-		lb:           lb.NewRoundRobin(hosts),
-		eventHandler: eventHandler,
-		logger:       logger,
+		moduleInfo: moduleInfo,
+		configData: configData,
+		lb:         lb.NewRoundRobin(hosts),
+		logger:     logger,
 	}
 }
 
-func (c *Client) Run(ctx context.Context) error {
+func (c *Client) Run(ctx context.Context, eventHandler *EventHandler) error {
+	ctx, cancel := context.WithCancel(ctx)
+	c.close = cancel
+	c.eventHandler = eventHandler
+
 	for {
 		err := c.runSession(ctx)
 		if errors.Is(err, context.Canceled) {
@@ -41,6 +46,11 @@ func (c *Client) Run(ctx context.Context) error {
 		case <-time.After(1 * time.Second):
 		}
 	}
+}
+
+func (c *Client) Close() error {
+	c.close()
+	return nil
 }
 
 func (c *Client) runSession(ctx context.Context) error {
@@ -94,7 +104,7 @@ func (c *Client) runSession(ctx context.Context) error {
 			c.logger.Error(ctx, err)
 			return
 		}
-		err = c.eventHandler.routesReceiver.ReceiveRoutes(routes)
+		err = c.eventHandler.routesReceiver.ReceiveRoutes(ctx, routes)
 		if err != nil {
 			c.logger.Error(ctx, err)
 		}
@@ -115,15 +125,15 @@ func (c *Client) confirm(ctx context.Context, data HandshakeData) error {
 		upgrader.Upgrade(hosts)
 	}
 
-	if c.eventHandler.remoteConfigReceiver != nil {
-		return c.applyRemoteConfig(ctx, data.initialRemoteConfig)
-	}
-
 	if c.eventHandler.routesReceiver != nil {
-		err := c.eventHandler.routesReceiver.ReceiveRoutes(data.initialRoutes)
+		err := c.eventHandler.routesReceiver.ReceiveRoutes(ctx, data.initialRoutes)
 		if err != nil {
 			return errors.WithMessagef(err, "receive routes")
 		}
+	}
+
+	if c.eventHandler.remoteConfigReceiver != nil {
+		return c.applyRemoteConfig(ctx, data.initialRemoteConfig)
 	}
 
 	return nil
@@ -144,7 +154,7 @@ func (c *Client) applyRemoteConfig(ctx context.Context, config []byte) (err erro
 	}()
 
 	go func() {
-		errChan <- c.eventHandler.remoteConfigReceiver.ReceiveConfig(config)
+		errChan <- c.eventHandler.remoteConfigReceiver.ReceiveConfig(ctx, config)
 	}()
 
 	select {

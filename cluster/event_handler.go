@@ -1,11 +1,15 @@
 package cluster
 
+import (
+	"context"
+)
+
 type RemoteConfigReceiver interface {
-	ReceiveConfig(remoteConfig []byte) error
+	ReceiveConfig(ctx context.Context, remoteConfig []byte) error
 }
 
 type RoutesReceiver interface {
-	ReceiveRoutes(routes RoutingConfig) error
+	ReceiveRoutes(ctx context.Context, routes RoutingConfig) error
 }
 
 type HostsUpgrader interface {

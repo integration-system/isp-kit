@@ -9,21 +9,21 @@ type Mandatory struct {
 	v *viper.Viper
 }
 
-func (m Mandatory) GetInt(key string) (int, error) {
+func (m Mandatory) Int(key string) (int, error) {
 	if m.v.IsSet(key) {
 		return m.v.GetInt(key), nil
 	}
 	return 0, errors.Errorf("%s is expected in config", key)
 }
 
-func (m Mandatory) GetString(key string) (string, error) {
+func (m Mandatory) String(key string) (string, error) {
 	if m.v.IsSet(key) {
 		return m.v.GetString(key), nil
 	}
 	return "", errors.Errorf("%s is expected in config", key)
 }
 
-func (m Mandatory) GetBool(key string) (bool, error) {
+func (m Mandatory) Bool(key string) (bool, error) {
 	if m.v.IsSet(key) {
 		return m.v.GetBool(key), nil
 	}

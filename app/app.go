@@ -3,13 +3,9 @@ package app
 import (
 	"context"
 	"fmt"
-	"os"
-	"path"
-	"strings"
 
 	"github.com/integration-system/isp-kit/config"
 	"github.com/integration-system/isp-kit/log"
-	"github.com/integration-system/isp-kit/validator"
 	"github.com/pkg/errors"
 	"golang.org/x/sync/errgroup"
 )
@@ -18,8 +14,20 @@ type Runner interface {
 	Run(ctx context.Context) error
 }
 
+type RunnerFunc func(ctx context.Context) error
+
+func (r RunnerFunc) Run(ctx context.Context) error {
+	return r(ctx)
+}
+
 type Closer interface {
 	Close() error
+}
+
+type CloserFunc func() error
+
+func (c CloserFunc) Close() error {
+	return c()
 }
 
 type Application struct {
@@ -27,26 +35,14 @@ type Application struct {
 	cfg    *config.Config
 	logger *log.Adapter
 
+	cancel  context.CancelFunc
 	group   *errgroup.Group
 	runners []Runner
 	closers []Closer
 }
 
-func New() (*Application, error) {
-	isDev := strings.ToLower(os.Getenv("APP_MODE")) == "dev"
-	group, ctx := errgroup.WithContext(context.Background())
-
-	localConfigOpts := []config.Option{
-		config.WithValidator(validator.Default),
-		config.WithEnvPrefix("LC_ISP"),
-	}
-	cfgFile, err := configFile(isDev)
-	if err != nil {
-		return nil, errors.WithMessage(err, "resolve config file path")
-	}
-	localConfigOpts = append(localConfigOpts, config.WithReadingFromFile(cfgFile))
-
-	cfg, err := config.New(localConfigOpts...)
+func New(isDev bool, cfgOpts ...config.Option) (*Application, error) {
+	cfg, err := config.New(cfgOpts...)
 	if err != nil {
 		return nil, errors.WithMessage(err, "create config")
 	}
@@ -54,14 +50,14 @@ func New() (*Application, error) {
 	loggerOpts := []log.Option{log.WithDevelopmentMode(), log.WithLevel(log.DebugLevel)}
 	if !isDev {
 		loggerOpts = []log.Option{log.WithLevel(log.InfoLevel)}
-		logFilePath := cfg.Optional().GetString("LOG_FILE_PATH", "")
+		logFilePath := cfg.Optional().String("LOG_FILE_PATH", "")
 		if logFilePath != "" {
 			rotation := log.Rotation{
 				File:       logFilePath,
-				MaxSizeMb:  cfg.Optional().GetInt("LOG_FILE_MAX_SIZE_MB", 512),
+				MaxSizeMb:  cfg.Optional().Int("LOG_FILE_MAX_SIZE_MB", 512),
 				MaxDays:    0,
-				MaxBackups: cfg.Optional().GetInt("LOG_FILE_MAX_BACKUPS", 4),
-				Compress:   cfg.Optional().GetBool("LOG_FILE_COMPRESS", true),
+				MaxBackups: cfg.Optional().Int("LOG_FILE_MAX_BACKUPS", 4),
+				Compress:   cfg.Optional().Bool("LOG_FILE_COMPRESS", true),
 			}
 			loggerOpts = append(loggerOpts, log.WithFileRotation(rotation))
 		}
@@ -71,12 +67,16 @@ func New() (*Application, error) {
 		return nil, errors.WithMessage(err, "create logger")
 	}
 
+	ctx, cancel := context.WithCancel(context.Background())
+	group, ctx := errgroup.WithContext(ctx)
+
 	return &Application{
 		ctx:     ctx,
 		cfg:     cfg,
 		logger:  logger,
 		group:   group,
 		closers: []Closer{logger},
+		cancel:  cancel,
 	}, nil
 }
 
@@ -115,26 +115,13 @@ func (a *Application) Run() error {
 }
 
 func (a *Application) Shutdown() {
-	for i := len(a.closers); i > 0; i-- {
-		closer := a.closers[i-1]
+	a.cancel()
+
+	for i := 0; i < len(a.closers); i++ {
+		closer := a.closers[i]
 		err := closer.Close()
 		if err != nil {
 			a.logger.Error(a.ctx, err, log.String("closer", fmt.Sprintln(closer)))
 		}
 	}
-}
-
-func configFile(isDev bool) (string, error) {
-	cfgPath := os.Getenv("APP_CONFIG_PATH")
-	if cfgPath != "" {
-		return cfgPath, nil
-	}
-	if isDev {
-		return "./conf/config.yml", nil
-	}
-	ex, err := os.Executable()
-	if err != nil {
-		return "", errors.WithMessage(err, "get executable path")
-	}
-	return path.Join(path.Dir(ex), "config.yml"), nil
 }

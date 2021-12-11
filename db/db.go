@@ -46,10 +46,10 @@ func (db *Client) RunInTransaction(ctx context.Context, txFunc TxFunc, opts ...T
 	defer func() {
 		if err != nil {
 			if rbErr := tx.Rollback(); rbErr != nil {
-				err = errors.Wrap(err, rbErr.Error())
+				err = errors.WithMessage(err, rbErr.Error())
 			}
 		} else {
-			err = errors.Wrap(tx.Commit(), "commit tx")
+			err = errors.WithMessage(tx.Commit(), "commit tx")
 		}
 	}()
 

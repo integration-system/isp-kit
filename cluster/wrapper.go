@@ -36,10 +36,10 @@ func (w *clientWrapper) On(event string, handler func(data []byte)) {
 }
 
 func (w *clientWrapper) EmitWithAck(ctx context.Context, event string, data []byte) ([]byte, error) {
+	ctx = log.ToContext(ctx, log.String("event", event))
 	w.logger.Info(
 		ctx,
 		"send event",
-		log.String("event", event),
 		log.Any("data", json.RawMessage(data)),
 	)
 
@@ -52,7 +52,7 @@ func (w *clientWrapper) EmitWithAck(ctx context.Context, event string, data []by
 		return resp, err
 	}
 
-	w.logger.Info(ctx, "event acknowledged", log.String("event", event), log.String("response", string(resp)))
+	w.logger.Info(ctx, "event acknowledged", log.String("response", string(resp)))
 	return resp, err
 }
 

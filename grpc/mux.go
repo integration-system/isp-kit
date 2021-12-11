@@ -47,11 +47,11 @@ func (m *Mux) Request(ctx context.Context, message *isp.Message) (*isp.Message, 
 	if err != nil {
 		return nil, err
 	}
-	ctx = log.ToContext(ctx, log.String("endpoint", endpoint))
 	handler, ok := m.unaryHandlers[endpoint]
 	if !ok {
 		return nil, status.Errorf(codes.NotFound, "handler not found for endpoint %s", endpoint)
 	}
+	ctx = log.ToContext(ctx, log.String("endpoint", endpoint))
 	return handler(ctx, message)
 }
 

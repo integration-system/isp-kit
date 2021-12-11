@@ -2,8 +2,10 @@ package cluster
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -48,7 +50,7 @@ type HandshakeData struct {
 	initialModulesHosts map[string][]string
 }
 
-func (h Handshake) Do(ctx context.Context, host string) (*clientWrapper, error) {
+func (h Handshake) Do(ctx context.Context, host string) (w *clientWrapper, err error) {
 	etpCli := etpclient.NewClient(etpclient.Config{
 		ConnectionReadLimit: 4 * 1024 * 1024,
 		HttpClient:          http.DefaultClient,
@@ -68,12 +70,25 @@ func (h Handshake) Do(ctx context.Context, host string) (*clientWrapper, error) 
 		h.logger.Error(ctx, "unexpected event from config service", log.String("event", event), log.Any("data", json.RawMessage(data)))
 	})
 
+	connUrl, err := url.Parse(fmt.Sprintf("ws://%s/isp-etp/", host))
+	if err != nil {
+		return nil, errors.WithMessage(err, "parse conn url")
+	}
+	params := url.Values{}
+	params.Add("moduleName", h.moduleInfo.ModuleName)
+	connUrl.RawQuery = params.Encode()
+
 	ctx, cancel := context.WithTimeout(ctx, 1*time.Second)
 	defer cancel()
-	err := cli.Dial(ctx, host)
+	err = cli.Dial(ctx, connUrl.String())
 	if err != nil {
 		return nil, errors.WithMessagef(err, "connect to config service %s", host)
 	}
+	defer func() {
+		if err != nil {
+			_ = cli.Close()
+		}
+	}()
 
 	configData, err := json.Marshal(h.configData)
 	if err != nil {
