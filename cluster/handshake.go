@@ -144,7 +144,23 @@ func (h Handshake) Do(ctx context.Context, host string) (w *clientWrapper, err e
 		return nil, errors.WithMessage(err, "handshake confirm")
 	}
 
-	readyData, err := json.Marshal(h.moduleInfo)
+	moduleDependencies := make([]ModuleDependency, 0)
+	for _, module := range h.requirements.RequiredModules {
+		dep := ModuleDependency{
+			Name:     module,
+			Required: true,
+		}
+		moduleDependencies = append(moduleDependencies, dep)
+	}
+	declaration := BackendDeclaration{
+		ModuleName:      h.moduleInfo.ModuleName,
+		Version:         h.moduleInfo.ModuleVersion,
+		LibVersion:      "1.0.0", //TODO
+		Endpoints:       h.moduleInfo.Endpoints,
+		RequiredModules: moduleDependencies,
+		Address:         h.moduleInfo.GrpcOuterAddress,
+	}
+	readyData, err := json.Marshal(declaration)
 	if err != nil {
 		return nil, errors.WithMessage(err, "marshal module ready data")
 	}

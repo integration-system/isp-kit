@@ -43,7 +43,7 @@ func (w *clientWrapper) On(event string, handler func(data []byte)) {
 			w.ctx,
 			"event received",
 			log.String("event", event),
-			log.Any("data", json2.RawMessage(data)),
+			log.Any("data", json2.RawMessage(copied)),
 		)
 		handler(copied)
 	})
@@ -103,6 +103,10 @@ func (w *clientWrapper) Ping(ctx context.Context) error {
 
 func (w *clientWrapper) Close() error {
 	return w.cli.Close()
+}
+
+func (w *clientWrapper) IsClosed() bool {
+	return w.cli.Closed()
 }
 
 func (w *clientWrapper) Dial(ctx context.Context, url string) error {

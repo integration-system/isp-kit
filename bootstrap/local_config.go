@@ -7,7 +7,16 @@ type LocalConfig struct {
 	ModuleName              string `valid:"required"`
 	AppMode                 string
 	DefaultRemoteConfigPath string
+	MigrationsDirPath       string
 	RemoteConfigOverride    string
+	LogFile                 LogFile
+}
+
+type LogFile struct {
+	Path       string
+	MaxSizeMb  int
+	MaxBackups int
+	Compress   int
 }
 
 type ConfigServiceAddr struct {

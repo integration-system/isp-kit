@@ -78,7 +78,11 @@ func (c *Client) runSession(ctx context.Context) error {
 	if err != nil {
 		return errors.WithMessage(err, "do handshake")
 	}
-	defer cli.Close()
+	defer func() {
+		if !cli.IsClosed() {
+			_ = cli.Close()
+		}
+	}()
 
 	for moduleName := range c.eventHandler.requiredModules {
 		event := ModuleConnectedEvent(moduleName)

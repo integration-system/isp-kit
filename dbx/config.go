@@ -5,13 +5,13 @@ import (
 )
 
 type Config struct {
-	Host        string `valid:"required" schema:"Адрес"`
+	Host        string `valid:"required" schema:"Хост"`
 	Port        string `valid:"required" schema:"Порт"`
-	Schema      string `valid:"required" schema:"Схема"`
-	Database    string `valid:"required" schema:"Название базы данных"`
+	Database    string `valid:"required" schema:"База данных"`
 	Username    string `schema:"Логин"`
 	Password    string `schema:"Пароль"`
-	MaxOpenConn int    `schema:"Максимально возможное количество соединений,если <=0 - ограничений нет"`
+	Schema      string `schema:"Схема"`
+	MaxOpenConn int    `schema:"Максимально количество соединений,если <=0 - используется значение по умолчанию равное cpu * 10"`
 }
 
 func (c Config) Dsn() string {

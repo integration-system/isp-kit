@@ -36,7 +36,7 @@ func (c *Declarator) Run(ch *amqp.Channel) error {
 	for _, binding := range c.cfg.Bindings {
 		err := ch.QueueBind(binding.QueueName, binding.RoutingKey, binding.ExchangeName, false, binding.Args)
 		if err != nil {
-			return errors.WithMessagef(err, "declare binding for queue '%s' on exchange '%s'", binding.QueueName, binding.ExchangeName)
+			return errors.WithMessagef(err, "declare binding for queue '%s' to exchange '%s'", binding.QueueName, binding.ExchangeName)
 		}
 	}
 

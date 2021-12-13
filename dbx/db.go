@@ -40,7 +40,7 @@ func Open(ctx context.Context, config Config, opts ...Option) (*Client, error) {
 	}
 
 	maxOpenConn := defaultMaxOpenConn
-	if config.MaxOpenConn != 0 {
+	if config.MaxOpenConn > 0 {
 		maxOpenConn = config.MaxOpenConn
 	}
 	dbCli.SetMaxOpenConns(maxOpenConn)

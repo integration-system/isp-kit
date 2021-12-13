@@ -24,6 +24,7 @@ type Bootstrap struct {
 	ClusterCli     *cluster.Client
 	RemoteConfig   *rc.Config
 	BindingAddress string
+	MigrationsDir  string
 	ModuleName     string
 }
 
@@ -109,7 +110,12 @@ func bootstrap(isDev bool, app *app.Application, moduleVersion string, remoteCon
 
 	rc := rc.New(validator.Default, []byte(localConfig.RemoteConfigOverride))
 
-	bindingAddress := net.JoinHostPort(localConfig.GrpcInnerAddress.IP, localConfig.ConfigServiceAddress.Port)
+	bindingAddress := net.JoinHostPort(localConfig.GrpcInnerAddress.IP, strconv.Itoa(localConfig.GrpcInnerAddress.Port))
+
+	migrationsDir, err := migrationsDirPath(isDev, localConfig)
+	if err != nil {
+		return nil, errors.WithMessage(err, "resolve migrations dir path")
+	}
 
 	return &Bootstrap{
 		App:            app,
@@ -117,6 +123,7 @@ func bootstrap(isDev bool, app *app.Application, moduleVersion string, remoteCon
 		RemoteConfig:   rc,
 		BindingAddress: bindingAddress,
 		ModuleName:     localConfig.ModuleName,
+		MigrationsDir:  migrationsDir,
 	}, nil
 }
 
@@ -167,6 +174,7 @@ func defaultRemoteConfigPath(isDev bool, cfg LocalConfig) (string, error) {
 	if cfg.DefaultRemoteConfigPath != "" {
 		return cfg.DefaultRemoteConfigPath, nil
 	}
+
 	if isDev {
 		return "conf/default_remote_config.json", nil
 	}
@@ -183,6 +191,7 @@ func configFilePath(isDev bool) (string, error) {
 	if cfgPath != "" {
 		return cfgPath, nil
 	}
+
 	if isDev {
 		return "./conf/config_dev.yml", nil
 	}
@@ -192,4 +201,20 @@ func configFilePath(isDev bool) (string, error) {
 		return "", errors.WithMessage(err, "get executable path")
 	}
 	return path.Join(path.Dir(ex), "config.yml"), nil
+}
+
+func migrationsDirPath(isDev bool, cfg LocalConfig) (string, error) {
+	if cfg.MigrationsDirPath != "" {
+		return cfg.MigrationsDirPath, nil
+	}
+
+	if isDev {
+		return "./migrations", nil
+	}
+
+	ex, err := os.Executable()
+	if err != nil {
+		return "", errors.WithMessage(err, "get executable path")
+	}
+	return path.Join(path.Dir(ex), "migrations"), nil
 }

@@ -50,14 +50,14 @@ func New(isDev bool, cfgOpts ...config.Option) (*Application, error) {
 	loggerOpts := []log.Option{log.WithDevelopmentMode(), log.WithLevel(log.DebugLevel)}
 	if !isDev {
 		loggerOpts = []log.Option{log.WithLevel(log.InfoLevel)}
-		logFilePath := cfg.Optional().String("LOG_FILE_PATH", "")
+		logFilePath := cfg.Optional().String("LOGFILE.PATH", "")
 		if logFilePath != "" {
 			rotation := log.Rotation{
 				File:       logFilePath,
-				MaxSizeMb:  cfg.Optional().Int("LOG_FILE_MAX_SIZE_MB", 512),
+				MaxSizeMb:  cfg.Optional().Int("LOGFILE.MAXSIZEMB", 512),
 				MaxDays:    0,
-				MaxBackups: cfg.Optional().Int("LOG_FILE_MAX_BACKUPS", 4),
-				Compress:   cfg.Optional().Bool("LOG_FILE_COMPRESS", true),
+				MaxBackups: cfg.Optional().Int("LOGFILE.MAXBACKUPS", 4),
+				Compress:   cfg.Optional().Bool("LOGFILE.COMPRESS", true),
 			}
 			loggerOpts = append(loggerOpts, log.WithFileRotation(rotation))
 		}
